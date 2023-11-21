@@ -1,9 +1,15 @@
 import numpy as np
 
 
+def as_array(x):
+    if np.isscalar(x):
+        return np.array(x)
+    return x
+
+
 class Variable:
     def __init__(self, data):
-        if data is not None:
+        if data:
             if not isinstance(data, np.ndarray):
                 raise TypeError(f"{type(data)} is not supported.")
         self.data = data
@@ -19,11 +25,17 @@ class Variable:
         funcs = [self.creator]
         while funcs:
             f = funcs.pop()
-            x, y = f.input, f.output
-            x.grad = f.backward(y.grad)
-            if x.creator:
-                funcs.append(x.creator)
-
+            gys = [output.grad for output in f.outputs]
+            gxs = f.backward(*gys)
+            if not isinstance(gxs, tuple):
+                gxs = gxs,
+            for x, gx in zip(f.inputs, gxs):
+                if x.grad is None:
+                    x.grad = gx
+                else:
+                    x.grad = x.grad + gx    # wrong: x.grad += gx
+                if x.creator:
+                    funcs.append(x.creator)
 
 class Function:
     def __call__(self, *inputs):
@@ -37,30 +49,42 @@ class Function:
         self.inputs = inputs
         self.outputs = outputs
         return outputs if len(outputs) > 1 else outputs[0]
-    
+
     def forward(self, xs):
         raise NotImplementedError()
-    
-    def backward(self, ys):
+
+    def backward(self, gys):
         raise NotImplementedError()
-    
+
 
 class Add(Function):
-    def forward(self, x0, x1):
-        return x0 + x1
+    def forward(self, x1, x2):
+        return x1 + x2
+
+    def backward(self, gy):
+        return gy, gy
 
 
-def as_array(x):
-    if np.isscalar(x):
-        return np.array(x)
-    return x
+class Square(Function):
+    def forward(self, x):
+        return x ** 2
 
-def add(x0, x1):
-    return Add()(x0, x1)
+    def backward(self, gy):
+        x = self.inputs[0].data
+        return gy * 2 * x
+
+
+def add(x1, x2):
+    return Add()(x1, x2)
+
+def square(x):
+    return Square()(x)
 
 
 if __name__ == "__main__":
-    x0 = Variable(np.array(2))
-    x1 = Variable(np.array(3))
-    y = add(x0, x1)
-    print(y.data)
+    x = Variable(np.array(3.0))
+    y = add(x, x)
+    y.backward()
+    print(y.grad)
+    print(x.grad)
+        
