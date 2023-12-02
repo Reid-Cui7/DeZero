@@ -67,7 +67,7 @@ class Function:
         for output in outputs:
             output.set_creator(self)
         self.inputs = inputs
-        self.outputs = [weakref.ref(output) for output in self.outputs]
+        self.outputs = [weakref.ref(output) for output in outputs]
         return outputs if len(outputs) > 1 else outputs[0]
     
     def forward(self, xs):
@@ -104,5 +104,5 @@ def square(x):
 if __name__ == "__main__":
     for i in range(10):
         x = Variable(np.random.randn(1000))
-        y = square(square(square))
+        y = square(square(square(x)))
 
