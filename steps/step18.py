@@ -25,6 +25,7 @@ class Variable:
 
     def set_creator(self, func):
         self.creator = func
+        self.generation = func.generation + 1
 
     def cleargrad(self):
         self.grad = None
